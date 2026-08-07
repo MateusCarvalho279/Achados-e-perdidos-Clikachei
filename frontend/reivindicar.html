@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reivindicar item · Achados e Perdidos</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
+</head>
+<body>
+    <header data-chrome="header"></header>
+
+    <main class="page">
+        <div class="container" style="max-width: 840px;">
+
+            <p style="margin-bottom:16px;">
+                <a href="index.html" style="font-size:14px;color:#6b6b6b;">&larr; Voltar para a lista</a>
+            </p>
+
+            <div data-alert class="hidden"></div>
+
+            <!-- Cabeçalho do item (preenchido via JS) -->
+            <section id="item-header" class="claim-header hidden"></section>
+
+            <!-- Questionário -->
+            <section id="questionnaire-card" class="card hidden">
+                <div class="card__head">
+                    <h2>Questionário de Reivindicação</h2>
+                    <p>
+                        Descreva o objeto com o máximo de precisão. Suas respostas são
+                        comparadas automaticamente com o registro feito no momento em que
+                        o item foi encontrado.
+                    </p>
+                </div>
+
+                <form id="claim-form" novalidate>
+                    <div id="questions"></div>
+
+                    <div class="form-field" style="margin-top:22px;">
+                        <label class="checkbox">
+                            <input type="checkbox" id="declaration" required>
+                            Declaro, sob minha responsabilidade, que sou o legítimo dono
+                            do objeto descrito acima.
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn btn--green btn--block" id="submit-claim">
+                        Enviar reivindicação
+                    </button>
+                    <p class="form-field__hint" style="text-align:center;margin-top:12px;">
+                        Tentativas são limitadas para impedir fraudes por tentativa e erro.
+                    </p>
+                </form>
+            </section>
+
+            <!-- Resultado -->
+            <section id="result-card" class="card result hidden"></section>
+
+            <div id="loading-state" class="empty-state">
+                <div class="empty-state__icon" aria-hidden="true">⏳</div>
+                <h3>Carregando questionário…</h3>
+            </div>
+        </div>
+    </main>
+
+    <footer data-chrome="footer"></footer>
+    <script type="module" src="js/claim.js"></script>
+</body>
+</html>

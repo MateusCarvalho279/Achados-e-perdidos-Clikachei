@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal do Aluno · Achados e Perdidos</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
+</head>
+<body>
+    <header data-chrome="header"></header>
+
+    <main class="page">
+        <div class="container">
+            <div class="auth-wrap">
+
+                <div class="auth-tabs" role="tablist">
+                    <button type="button" data-tab="login" class="is-active" role="tab">Entrar</button>
+                    <button type="button" data-tab="register" role="tab">Criar conta</button>
+                </div>
+
+                <div class="card">
+                    <div class="card__head">
+                        <h2 id="auth-title">Acessar o portal</h2>
+                        <p id="auth-subtitle">
+                            Identifique-se para reivindicar um item encontrado.
+                        </p>
+                    </div>
+
+                    <div data-alert class="hidden"></div>
+
+                    <!-- Login ------------------------------------------------ -->
+                    <form id="form-login" novalidate>
+                        <div class="form-field">
+                            <label for="login-email">E-mail</label>
+                            <input type="email" id="login-email" name="email"
+                                   autocomplete="email" required placeholder="voce@cotemig.com.br">
+                        </div>
+                        <div class="form-field">
+                            <label for="login-password">Senha</label>
+                            <input type="password" id="login-password" name="password"
+                                   autocomplete="current-password" required placeholder="••••••••">
+                        </div>
+                        <button type="submit" class="btn btn--block">Entrar</button>
+                    </form>
+
+                    <!-- Cadastro --------------------------------------------- -->
+                    <form id="form-register" class="hidden" novalidate>
+                        <div class="form-field">
+                            <label for="register-name">Nome completo</label>
+                            <input type="text" id="register-name" name="name"
+                                   autocomplete="name" required placeholder="Seu nome completo">
+                        </div>
+                        <div class="form-field">
+                            <label for="register-email">E-mail</label>
+                            <input type="email" id="register-email" name="email"
+                                   autocomplete="email" required placeholder="voce@cotemig.com.br">
+                        </div>
+                        <div class="form-field">
+                            <label for="register-password">Senha</label>
+                            <input type="password" id="register-password" name="password"
+                                   autocomplete="new-password" required minlength="6"
+                                   placeholder="Mínimo de 6 caracteres">
+                            <p class="form-field__hint">Use pelo menos 6 caracteres.</p>
+                        </div>
+                        <button type="submit" class="btn btn--block">Criar conta</button>
+                    </form>
+
+                    <div class="auth-hint">
+                        <strong>Contas de demonstração</strong><br>
+                        Aluno: <code>aluno@cotemig.com.br</code> / <code>aluno123</code><br>
+                        Admin: <code>admin@cotemig.com.br</code> / <code>admin123</code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer data-chrome="footer"></footer>
+    <script type="module" src="js/auth.js"></script>
+</body>
+</html>
