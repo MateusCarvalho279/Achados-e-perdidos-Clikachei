@@ -22,7 +22,6 @@ via **stored procedures no MySQL**, na arquitetura em camadas
 - [Rotas da API](#rotas-da-api)
 - [Modelagem do banco de dados](#modelagem-do-banco-de-dados)
 - [Como executar](#como-executar)
-- [Testes](#testes)
 - [Segurança](#segurança)
 
 ---
@@ -290,19 +289,6 @@ python run.py --reset    # recria o schema e as procedures no MySQL antes de sub
 | Aluno | `aluno@cotemig.com.br` | `aluno123` |
 
 ---
-
-## Testes
-
-```bash
-# Unitários (motor de validação + segurança) — não precisam do MySQL
-python -m unittest discover -s tests -p "test_matching.py"
-python -m unittest discover -s tests -p "test_security.py"
-
-# Integração — com o servidor rodando a partir de um banco recém-criado
-python run.py --reset            # em um terminal
-python tests/test_api_flow.py           # fluxo geral (39 verificações)
-python tests/test_advanced_features.py  # as 5 funcionalidades desta etapa (19 verificações)
-```
 
 ## Segurança
 
