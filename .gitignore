@@ -1,19 +1,7 @@
-# Banco de dados e segredos gerados em tempo de execução
-data/
-
-# Python
+.env
 __pycache__/
-*.py[cod]
+*.pyc
 .venv/
 venv/
-*.egg-info/
-
-# Editores / SO
+*.sqlite3
 .vscode/
-.idea/
-.claude/
-.DS_Store
-Thumbs.db
-
-# Não relacionado ao projeto
-oi.txt

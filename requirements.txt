@@ -1,6 +1,5 @@
-# Sistema de Achados e Perdidos - Colégio COTEMIG
-# Backend: Flask (Controller) + PyMySQL (acesso ao MySQL).
-# Consultas com filtro/ordenação/JOIN/relatório vivem em stored procedures no
-# banco (database/02_procedures.sql), chamadas pela camada Repository.
-Flask>=3.0
-PyMySQL>=1.1
+Flask==3.0.3
+Flask-SQLAlchemy==3.1.1
+SQLAlchemy==2.0.35
+PyMySQL==1.1.1
+python-dotenv==1.0.1
