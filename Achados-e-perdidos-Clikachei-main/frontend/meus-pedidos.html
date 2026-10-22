@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meus Pedidos · Achados e Perdidos</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
+</head>
+<body>
+    <header data-chrome="header"></header>
+
+    <main class="page">
+        <div class="container" style="max-width: 940px;">
+            <div class="section-head">
+                <h2>Meus Pedidos</h2>
+                <p>Histórico das suas reivindicações e códigos de retirada emitidos.</p>
+            </div>
+
+            <div data-alert class="hidden"></div>
+
+            <form class="card search-bar" id="history-filter">
+                <div class="form-row">
+                    <div class="form-field">
+                        <label for="h-status">Situação</label>
+                        <select id="h-status">
+                            <option value="">Todas</option>
+                            <option value="approved">Aprovado</option>
+                            <option value="pending_review">Em análise</option>
+                            <option value="rejected">Recusado</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label for="h-ordenacao">Ordenar por</label>
+                        <select id="h-ordenacao">
+                            <option value="recentes">Mais recentes</option>
+                            <option value="antigos">Mais antigos</option>
+                        </select>
+                    </div>
+                    <div class="form-field search-bar__actions">
+                        <button type="submit" class="btn btn--green">Filtrar</button>
+                    </div>
+                </div>
+            </form>
+
+            <div class="card">
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th>Código</th>
+                                <th>Data</th>
+                                <th>Situação</th>
+                                <th>Retirada</th>
+                            </tr>
+                        </thead>
+                        <tbody id="claims-body">
+                            <tr><td colspan="5">Carregando…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer data-chrome="footer"></footer>
+    <script type="module" src="js/my-claims.js"></script>
+</body>
+</html>

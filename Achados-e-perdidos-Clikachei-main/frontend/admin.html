@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Administrativo · Achados e Perdidos</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
+</head>
+<body>
+    <header data-chrome="header"></header>
+
+    <main class="page">
+        <div class="container">
+            <div class="section-head">
+                <h2>Painel Administrativo</h2>
+                <p>Cadastro de itens, gabarito sigiloso e curadoria das reivindicações.</p>
+            </div>
+
+            <div data-alert class="hidden"></div>
+
+            <div class="stat-grid" id="stats"></div>
+
+            <div class="tabs">
+                <button type="button" data-panel="items" class="is-active">Itens registrados</button>
+                <button type="button" data-panel="new">Cadastrar item</button>
+                <button type="button" data-panel="claims">Reivindicações</button>
+                <button type="button" data-panel="reports">Relatórios</button>
+            </div>
+
+            <!-- ============================ ITENS ============================ -->
+            <section data-panel-content="items" class="card">
+                <div class="card__head">
+                    <h2>Itens registrados</h2>
+                    <p>Itens reivindicados saem automaticamente da vitrine pública.</p>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Item</th>
+                                <th>Encontrado</th>
+                                <th>Perguntas</th>
+                                <th>Situação</th>
+                                <th>Retirada</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="items-body">
+                            <tr><td colspan="7">Carregando…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ========================= NOVO ITEM ========================== -->
+            <section data-panel-content="new" class="card hidden">
+                <div class="card__head">
+                    <h2>Cadastrar novo item</h2>
+                    <p>
+                        Os dados do bloco superior são públicos. As características abaixo
+                        formam o gabarito sigiloso usado pelo motor de validação.
+                    </p>
+                </div>
+
+                <form id="item-form" novalidate>
+                    <div class="form-row">
+                        <div class="form-field">
+                            <label for="item-title">Título público</label>
+                            <input type="text" id="item-title" required
+                                   placeholder="Ex.: Guarda-chuva">
+                            <p class="form-field__hint">Genérico de propósito — nunca detalhado.</p>
+                        </div>
+                        <div class="form-field">
+                            <label for="item-category">Categoria</label>
+                            <input type="text" id="item-category" required
+                                   placeholder="Ex.: Acessórios">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-field">
+                            <label for="item-icon">Ícone (emoji)</label>
+                            <input type="text" id="item-icon" value="📦" maxlength="4">
+                        </div>
+                        <div class="form-field">
+                            <label for="item-date">Data em que foi encontrado</label>
+                            <input type="date" id="item-date" required>
+                        </div>
+                        <div class="form-field">
+                            <label for="item-location">Local (genérico)</label>
+                            <input type="text" id="item-location" placeholder="Ex.: Bloco B">
+                        </div>
+                    </div>
+
+                    <div class="form-field">
+                        <label for="item-notes">Observações internas (sigiloso)</label>
+                        <textarea id="item-notes" placeholder="Visível apenas para administradores."></textarea>
+                    </div>
+
+                    <div class="card__head" style="margin-top:26px;">
+                        <h2 style="font-size:16px;">Características sigilosas</h2>
+                        <p>
+                            Cada característica vira uma pergunta do questionário. Use
+                            <strong>peso</strong> para destacar o que é mais discriminante e
+                            marque <strong>crítica</strong> em dados que só o dono saberia
+                            (senha, nome nos documentos).
+                        </p>
+                    </div>
+
+                    <div id="attributes"></div>
+
+                    <button type="button" class="btn btn--ghost btn--sm" id="add-attribute">
+                        + Adicionar característica
+                    </button>
+
+                    <button type="submit" class="btn btn--green btn--block" style="margin-top:24px;">
+                        Cadastrar item
+                    </button>
+                </form>
+            </section>
+
+            <!-- ======================= REIVINDICAÇÕES ======================= -->
+            <section data-panel-content="claims" class="card hidden">
+                <div class="card__head">
+                    <h2>Reivindicações</h2>
+                    <p>
+                        Trilha completa de auditoria. Pedidos "em análise" ficaram na faixa
+                        intermediária de score e aguardam sua decisão.
+                    </p>
+                </div>
+
+                <div class="form-row" style="margin-bottom:18px;max-width:420px;">
+                    <div class="form-field">
+                        <label for="claims-status-filter">Filtrar por situação</label>
+                        <select id="claims-status-filter">
+                            <option value="">Todas</option>
+                            <option value="pending_review">Em análise</option>
+                            <option value="approved">Aprovado</option>
+                            <option value="rejected">Recusado</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="claims-list">Carregando…</div>
+            </section>
+
+            <!-- ========================= RELATÓRIOS ========================== -->
+            <section data-panel-content="reports" class="card hidden">
+                <div class="card__head">
+                    <h2>Relatório por categoria</h2>
+                    <p>
+                        Itens encontrados x devolvidos, agrupados por categoria — quantos
+                        cada categoria já teve, quantos foram recuperados e o score médio
+                        das reivindicações aprovadas.
+                    </p>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Categoria</th>
+                                <th>Itens encontrados</th>
+                                <th>Devolvidos</th>
+                                <th>Taxa de recuperação</th>
+                                <th>Tentativas</th>
+                                <th>Score médio (aprovados)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="report-categories-body">
+                            <tr><td colspan="6">Carregando…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section data-panel-content="reports" class="card hidden">
+                <div class="card__head">
+                    <h2>Ranking de locais</h2>
+                    <p>Locais onde mais itens são encontrados — ajuda a decidir onde reforçar a supervisão.</p>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Local</th>
+                                <th>Itens encontrados</th>
+                                <th>Devolvidos</th>
+                                <th>Taxa de recuperação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="report-locations-body">
+                            <tr><td colspan="4">Carregando…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer data-chrome="footer"></footer>
+    <script type="module" src="js/admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Galeria pública de itens encontrados no Colégio COTEMIG.">
+    <title>Achados e Perdidos · Colégio COTEMIG</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
+</head>
+<body>
+    <header data-chrome="header"></header>
+
+    <main class="page">
+        <div class="container">
+
+            <!-- Aviso que explica ao usuário POR QUE não há fotos nem detalhes -->
+            <section class="notice">
+                <h2 class="notice__title"><span aria-hidden="true">ℹ️</span> Importante</h2>
+                <p class="notice__body">
+                    Por questões de segurança, não divulgamos características específicas
+                    dos objetos. Para reivindicar um item, você precisará descrevê-lo
+                    detalhadamente.
+                </p>
+            </section>
+
+            <div class="section-head">
+                <h2>Itens Encontrados</h2>
+                <p id="items-count">Carregando…</p>
+            </div>
+
+            <!-- Busca avançada: filtros combináveis + ordenação (sp_buscar_itens) -->
+            <form class="card search-bar" id="search-form">
+                <div class="form-row">
+                    <div class="form-field">
+                        <label for="f-texto">Buscar por palavra-chave</label>
+                        <input type="text" id="f-texto" placeholder="Título ou local...">
+                    </div>
+                    <div class="form-field">
+                        <label for="f-categoria">Categoria</label>
+                        <select id="f-categoria">
+                            <option value="">Todas</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label for="f-ordenacao">Ordenar por</label>
+                        <select id="f-ordenacao">
+                            <option value="recentes">Mais recentes</option>
+                            <option value="antigos">Mais antigos</option>
+                            <option value="titulo_asc">Título (A-Z)</option>
+                            <option value="titulo_desc">Título (Z-A)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-field">
+                        <label for="f-data-inicio">Encontrado a partir de</label>
+                        <input type="date" id="f-data-inicio">
+                    </div>
+                    <div class="form-field">
+                        <label for="f-data-fim">Encontrado até</label>
+                        <input type="date" id="f-data-fim">
+                    </div>
+                    <div class="form-field search-bar__actions">
+                        <button type="submit" class="btn btn--green">Buscar</button>
+                        <button type="button" class="btn btn--ghost" id="search-clear">Limpar filtros</button>
+                    </div>
+                </div>
+            </form>
+
+            <div data-alert class="hidden"></div>
+
+            <div class="item-grid" id="item-grid">
+                <div class="skeleton"></div>
+                <div class="skeleton"></div>
+                <div class="skeleton"></div>
+            </div>
+        </div>
+    </main>
+
+    <footer data-chrome="footer"></footer>
+    <script type="module" src="js/dashboard.js"></script>
+</body>
+</html>
