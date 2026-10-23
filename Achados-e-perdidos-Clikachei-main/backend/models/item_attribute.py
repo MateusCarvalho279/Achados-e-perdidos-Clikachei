@@ -3,18 +3,112 @@
 from __future__ import annotations
 
 import json
-
 from pymysql.connections import Connection
+from backend.extensions import db
+
+# Garante herança de db.Model se existir na extensão db, sem quebrar o PyMySQL
+BaseModel = getattr(db, "Model", object)
 
 
-class ItemAttribute:
+class ItemAttribute(BaseModel):
     """CRUD básico da tabela `item_attributes`."""
 
+    def __init__(
+        self,
+        id: int | None = None,
+        item_id: int = 0,
+        question: str = "",
+        field_type: str = "text",
+        options: list[str] | None = None,
+        placeholder: str | None = None,
+        expected_answer: str = "",
+        alternatives: list[str] | None = None,
+        weight: int = 1,
+        is_critical: bool = False,
+        tolerance: float = 0.0,
+        sort_order: int = 0,
+    ):
+        self.id = id
+        self.item_id = item_id
+        self.question = question
+        self.field_type = field_type
+        self.options = options
+        self.placeholder = placeholder
+        self.expected_answer = expected_answer
+        self.alternatives = alternatives or []
+        self.weight = weight
+        self.is_critical = is_critical
+        self.tolerance = tolerance
+        self.sort_order = sort_order
+
+    # =========================================================================
+    # MÉTODOS OBRIGATÓRIOS DO REQUISITO 4 (Em Português, integrados ao PyMySQL)
+    # =========================================================================
+    def salvar(self, conn: Connection) -> int:
+        self.id = self.create(
+            conn,
+            item_id=self.item_id,
+            question=self.question,
+            field_type=self.field_type,
+            options=self.options,
+            placeholder=self.placeholder,
+            expected_answer=self.expected_answer,
+            alternatives=self.alternatives,
+            weight=self.weight,
+            is_critical=self.is_critical,
+            tolerance=self.tolerance,
+            sort_order=self.sort_order,
+        )
+        return self.id
+
+    def atualizar(self, conn: Connection) -> None:
+        if self.id is None:
+            raise ValueError("ID do atributo é obrigatório para atualizar.")
+        self.update(
+            conn,
+            self.id,
+            question=self.question,
+            field_type=self.field_type,
+            options=self.options,
+            placeholder=self.placeholder,
+            expected_answer=self.expected_answer,
+            alternatives=self.alternatives,
+            weight=self.weight,
+            is_critical=self.is_critical,
+            tolerance=self.tolerance,
+            sort_order=self.sort_order,
+        )
+
+    def deletar(self, conn: Connection) -> bool:
+        if self.id is None:
+            raise ValueError("ID do atributo é obrigatório para deletar.")
+        return self.delete(conn, self.id)
+
+    @staticmethod
+    def listar_todos(conn: Connection) -> list[dict]:
+        return ItemAttribute.find_all(conn)
+
+    @staticmethod
+    def buscar_por_id(conn: Connection, attr_id: int) -> dict | None:
+        return ItemAttribute.find_by_id(conn, attr_id)
+
+    # =========================================================================
+    # MÉTODOS ORIGINAIS E COMPLEMENTARES DO PROJETO
+    # =========================================================================
     @staticmethod
     def create(
-        conn: Connection, *, item_id: int, question: str, field_type: str,
-        options: list[str] | None, placeholder: str | None, expected_answer: str,
-        alternatives: list[str], weight: int, is_critical: bool, tolerance: float,
+        conn: Connection,
+        *,
+        item_id: int,
+        question: str,
+        field_type: str,
+        options: list[str] | None,
+        placeholder: str | None,
+        expected_answer: str,
+        alternatives: list[str],
+        weight: int,
+        is_critical: bool,
+        tolerance: float,
         sort_order: int,
     ) -> int:
         with conn.cursor() as cursor:
@@ -27,52 +121,70 @@ class ItemAttribute:
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
-                    item_id, question, field_type,
+                    item_id,
+                    question,
+                    field_type,
                     json.dumps(options, ensure_ascii=False) if options else None,
-                    placeholder, expected_answer,
+                    placeholder,
+                    expected_answer,
                     json.dumps(alternatives, ensure_ascii=False),
-                    weight, int(is_critical), tolerance, sort_order,
+                    weight,
+                    int(is_critical),
+                    tolerance,
+                    sort_order,
                 ),
             )
             return cursor.lastrowid
 
     @staticmethod
-    def find_by_item_id(conn: Connection, item_id: int) -> list[dict]:
-        """
-        Gabarito completo de um item, na ordem de apresentação fixa
-        (`sort_order`) — essa ordenação é intrínseca à entidade (a mesma
-        pergunta sempre aparece na mesma posição), não uma escolha do usuário
-        final, por isso continua no Model em vez de virar uma procedure.
-        """
+    def update(
+        conn: Connection,
+        attr_id: int,
+        *,
+        question: str,
+        field_type: str,
+        options: list[str] | None,
+        placeholder: str | None,
+        expected_answer: str,
+        alternatives: list[str],
+        weight: int,
+        is_critical: bool,
+        tolerance: float,
+        sort_order: int,
+    ) -> None:
         with conn.cursor() as cursor:
             cursor.execute(
-                "SELECT * FROM item_attributes WHERE item_id = %s ORDER BY sort_order, id",
-                (item_id,),
+                """
+                UPDATE item_attributes
+                   SET question = %s, field_type = %s, options = %s, placeholder = %s,
+                       expected_answer = %s, alternatives = %s, weight = %s,
+                       is_critical = %s, tolerance = %s, sort_order = %s
+                 WHERE id = %s
+                """,
+                (
+                    question,
+                    field_type,
+                    json.dumps(options, ensure_ascii=False) if options else None,
+                    placeholder,
+                    expected_answer,
+                    json.dumps(alternatives, ensure_ascii=False),
+                    weight,
+                    int(is_critical),
+                    tolerance,
+                    sort_order,
+                    attr_id,
+                ),
             )
-            rows = cursor.fetchall()
-
-        for row in rows:
-            row["options"] = _load_json_list(row["options"])
-            row["alternatives"] = _load_json_list(row["alternatives"])
-        return rows
 
     @staticmethod
-    def count_by_item_id(conn: Connection, item_id: int) -> int:
+    def delete(conn: Connection, attr_id: int) -> bool:
         with conn.cursor() as cursor:
-            cursor.execute(
-                "SELECT COUNT(*) AS total FROM item_attributes WHERE item_id = %s", (item_id,)
-            )
-            return cursor.fetchone()["total"]
+            cursor.execute("DELETE FROM item_attributes WHERE id = %s", (attr_id,))
+            return cursor.rowcount == 1
 
-
-def _load_json_list(raw) -> list[str]:
-    """MySQL/PyMySQL já desserializa colunas JSON automaticamente."""
-    if raw is None:
-        return []
-    if isinstance(raw, list):
-        return [str(v) for v in raw]
-    try:
-        value = json.loads(raw)
-    except (TypeError, ValueError):
-        return []
-    return [str(v) for v in value] if isinstance(value, list) else []
+    @staticmethod
+    def find_by_id(conn: Connection, attr_id: int) -> dict | None:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT * FROM item_attributes WHERE id = %s", (attr_id,))
+            row = cursor.fetchone()
+        if row:

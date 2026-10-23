@@ -3,17 +3,100 @@
 from __future__ import annotations
 
 from datetime import date
-
 from pymysql.connections import Connection
+from backend.extensions.db import db
 
 
-class LostItem:
-    """CRUD básico da tabela `lost_items` (sem filtros de negócio nem JOIN)."""
+# Caso db.Model exista na sua extensão db, herdamos dela; caso contrário, usamos object
+BaseModel = getattr(db, "Model", object)
+
+
+class LostItem(BaseModel):
+    """CRUD básico da tabela `lost_items`."""
+
+    def __init__(
+        self,
+        id: int | None = None,
+        public_code: str = "",
+        title: str = "",
+        category: str = "",
+        icon: str = "",
+        found_date: date | None = None,
+        found_location: str | None = None,
+        internal_notes: str | None = None,
+        status: str = "available",
+        created_by: int = 1,
+    ):
+        self.id = id
+        self.public_code = public_code
+        self.title = title
+        self.category = category
+        self.icon = icon
+        self.found_date = found_date
+        self.found_location = found_location
+        self.internal_notes = internal_notes
+        self.status = status
+        self.created_by = created_by
+
+    # =========================================================================
+    # MÉTODOS OBRIGATÓRIOS DO REQUISITO 4 (Em Português, integrados ao PyMySQL)
+    # =========================================================================
+    def salvar(self, conn: Connection) -> int:
+        self.id = self.create(
+            conn,
+            public_code=self.public_code,
+            title=self.title,
+            category=self.category,
+            icon=self.icon,
+            found_date=self.found_date,
+            found_location=self.found_location,
+            internal_notes=self.internal_notes,
+            created_by=self.created_by,
+        )
+        return self.id
+
+    def atualizar(self, conn: Connection) -> None:
+        if self.id is None:
+            raise ValueError("ID do item é obrigatório para atualizar.")
+        self.update(
+            conn,
+            self.id,
+            title=self.title,
+            category=self.category,
+            icon=self.icon,
+            found_date=self.found_date,
+            found_location=self.found_location,
+            internal_notes=self.internal_notes,
+            status=self.status,
+        )
+
+    def deletar(self, conn: Connection) -> None:
+        if self.id is None:
+            raise ValueError("ID do item é obrigatório para deletar.")
+        self.delete(conn, self.id)
 
     @staticmethod
+    def listar_todos(conn: Connection) -> list[dict]:
+        return LostItem.find_all(conn)
+
+    @staticmethod
+    def buscar_por_id(conn: Connection, item_id: int) -> dict | None:
+        return LostItem.find_by_id(conn, item_id)
+
+    # =========================================================================
+    # MÉTODOS ORIGINAIS DO PROJETO (Mantidos para não quebrar os Services)
+    # =========================================================================
+    @staticmethod
     def create(
-        conn: Connection, *, public_code: str, title: str, category: str, icon: str,
-        found_date: date, found_location: str | None, internal_notes: str | None,
+        conn: Connection,
+        *,
+        public_code: str,
+        title: str,
+        category: str,
+        icon: str,
+        found_date: date,
+        found_location: str | None,
+        internal_notes: str | None,
         created_by: int,
     ) -> int:
         with conn.cursor() as cursor:
@@ -24,8 +107,16 @@ class LostItem:
                      internal_notes, status, created_by)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, 'available', %s)
                 """,
-                (public_code, title, category, icon, found_date, found_location,
-                 internal_notes, created_by),
+                (
+                    public_code,
+                    title,
+                    category,
+                    icon,
+                    found_date,
+                    found_location,
+                    internal_notes,
+                    created_by,
+                ),
             )
             return cursor.lastrowid
 
@@ -38,20 +129,23 @@ class LostItem:
     @staticmethod
     def find_by_code(conn: Connection, public_code: str) -> dict | None:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT * FROM lost_items WHERE public_code = %s", (public_code.strip(),))
+            cursor.execute(
+                "SELECT * FROM lost_items WHERE public_code = %s",
+                (public_code.strip(),),
+            )
             return cursor.fetchone()
 
     @staticmethod
     def find_all(conn: Connection) -> list[dict]:
-        """
-        Todos os itens, sem filtro — visão bruta de tabela usada apenas pelo
-        painel administrativo. Ordenação por `id DESC` é o padrão trivial de
-        "mais recente primeiro" (não é uma ordenação escolhida pelo usuário —
-        para isso existe `sp_buscar_itens` na camada Repository).
-        """
         with conn.cursor() as cursor:
             cursor.execute("SELECT * FROM lost_items ORDER BY id DESC")
             return cursor.fetchall()
+
+    @staticmethod
+    def delete(conn: Connection, item_id: int) -> bool:
+        with conn.cursor() as cursor:
+            cursor.execute("DELETE FROM lost_items WHERE id = %s", (item_id,))
+            return cursor.rowcount == 1
 
     @staticmethod
     def count_public_code_prefix(conn: Connection, year: int) -> int:
@@ -64,12 +158,9 @@ class LostItem:
             return cursor.fetchone()["total"]
 
     @staticmethod
-    def mark_claimed(conn: Connection, item_id: int, user_id: int, pickup_code: str) -> bool:
-        """
-        UPDATE condicionado a `status = 'available'` — é o ponto de
-        serialização que impede dois usuários de serem aprovados no mesmo
-        item. Devolve False se o item já tinha sido levado.
-        """
+    def mark_claimed(
+        conn: Connection, item_id: int, user_id: int, pickup_code: str
+    ) -> bool:
         with conn.cursor() as cursor:
             cursor.execute(
                 """
@@ -84,8 +175,15 @@ class LostItem:
 
     @staticmethod
     def update(
-        conn: Connection, item_id: int, *, title: str, category: str, icon: str,
-        found_date: date, found_location: str | None, internal_notes: str | None,
+        conn: Connection,
+        item_id: int,
+        *,
+        title: str,
+        category: str,
+        icon: str,
+        found_date: date,
+        found_location: str | None,
+        internal_notes: str | None,
         status: str,
     ) -> None:
         with conn.cursor() as cursor:
@@ -96,7 +194,16 @@ class LostItem:
                        found_location = %s, internal_notes = %s, status = %s
                  WHERE id = %s
                 """,
-                (title, category, icon, found_date, found_location, internal_notes, status, item_id),
+                (
+                    title,
+                    category,
+                    icon,
+                    found_date,
+                    found_location,
+                    internal_notes,
+                    status,
+                    item_id,
+                ),
             )
 
     @staticmethod
@@ -115,8 +222,12 @@ class LostItem:
 
     @staticmethod
     def mark_delivered(
-        conn: Connection, item_id: int, *, delivered_to_name: str,
-        delivered_to_doc: str, delivered_notes: str | None,
+        conn: Connection,
+        item_id: int,
+        *,
+        delivered_to_name: str,
+        delivered_to_doc: str,
+        delivered_notes: str | None,
     ) -> bool:
         with conn.cursor() as cursor:
             cursor.execute(
@@ -179,7 +290,9 @@ class LostItem:
     @staticmethod
     def archive(conn: Connection, item_id: int) -> None:
         with conn.cursor() as cursor:
-            cursor.execute("UPDATE lost_items SET status = 'archived' WHERE id = %s", (item_id,))
+            cursor.execute(
+                "UPDATE lost_items SET status = 'archived' WHERE id = %s", (item_id,)
+            )
 
     @staticmethod
     def count_by_status(conn: Connection, status: str) -> int:
@@ -189,4 +302,3 @@ class LostItem:
                 "SELECT COUNT(*) AS total FROM lost_items WHERE status = %s", (status,)
             )
             return cursor.fetchone()["total"]
-
