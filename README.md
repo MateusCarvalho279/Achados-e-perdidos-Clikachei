@@ -1,169 +1,195 @@
-# Achados e Perdidos
+# Achados e Perdidos · Colégio COTEMIG
 
-Sistema web de achados e perdidos escolar. O aluno consulta os itens encontrados,
-filtra por dia ou categoria e abre uma reivindicacao comprovando a propriedade;
-a secretaria gerencia o acervo de itens e acompanha os relatorios.
+Sistema web de achados e perdidos escolar. O aluno consulta os itens encontrados, reivindica
+o que é seu respondendo a um questionário sigiloso (validado automaticamente contra o gabarito
+cadastrado pela secretaria) e registra alertas do que perdeu. A secretaria gerencia o acervo,
+decide os pedidos duvidosos, registra a entrega presencial, destina itens antigos à doação e
+acompanha relatórios.
 
-Projeto desenvolvido em **Flask + MySQL**, seguindo a arquitetura
-`Tela -> API Flask -> Controller -> Service -> Model/Repository -> Banco de Dados`.
+**Stack:** Flask 3 + Flask-SQLAlchemy + MySQL 8 (Stored Procedures) · frontend em HTML/CSS/JS puro
+consumindo a API REST via `fetch`.
+
+Arquitetura: `Tela → API Flask → Controller → Service → Model/Repository → Banco de Dados`
+
+📐 **Diagrama de classes:** [`docs/diagrama-de-classes.md`](docs/diagrama-de-classes.md)
+(imagem: [`docs/diagrama-de-classes.png`](docs/diagrama-de-classes.png))
 
 ---
 
 ## Funcionalidades Implementadas
 
-1. **Cadastrar cliente** - cadastro do aluno com validacao de e-mail, matricula unica e senha com hash.
-2. **Listar produtos** - lista todos os itens encontrados cadastrados no sistema.
-3. **Atualizar lista de produtos** - edicao dos dados de um item (nome, categoria, cor, marca, local, status, data).
-4. **Excluir produto** - remocao de um item, bloqueada quando ele esta reservado para entrega.
-5. **Cadastrar produto** - registro de um novo item encontrado, com validacao de categoria e data.
-6. **Listar por dia** - itens encontrados em uma data especifica (procedure `sp_listar_produtos_por_dia`).
-7. **Buscar produtos por categoria** - filtro por categoria + status (procedure `sp_buscar_produtos_por_categoria`).
-8. **Registrar reivindicacao** - solicitacao de devolucao com regras de negocio (datas coerentes, item nao entregue, sem duplicidade pendente).
-9. **Consultar historico de reivindicacao** - consulta com JOIN entre reivindicacoes, clientes e produtos, com calculo de compatibilidade (procedure `sp_historico_reivindicacoes`).
-10. **Gerar relatorio de reivindicacao** - totais por situacao, por categoria e ranking de locais em um periodo (procedures `sp_relatorio_reivindicacoes`, `sp_relatorio_reivindicacoes_por_categoria`, `sp_ranking_locais_perda`).
+São 34 funcionalidades (0 a 33). Cada uma funciona de ponta a ponta: tela → rota da API → Controller →
+Service → Model/Repository → MySQL.
 
-> Funcionalidade complementar: **login do cliente** (`AutenticarClienteService`), usado para
-> identificar o solicitante nas telas de reivindicacao e historico.
+### Área do aluno
+
+> O site inteiro exige login. A porta de entrada é a **tela inicial** (`/` → `inicio.html`), que
+> exibe uma **conta de teste** para conhecer o sistema sem precisar se cadastrar.
+
+| # | Funcionalidade | Tela | Rota da API | Controller → Service | Model / Repository |
+|---|---|---|---|---|---|
+| 0 | **Tela inicial com conta de teste** (login obrigatório, entrada em um clique) | `inicio.html` | `GET /api/auth/test-account` · `POST /api/auth/login` | `AuthController.conta_teste` → `ObterContaTesteService` | `User.buscar_por_email()` |
+| 1 | **Cadastrar aluno** | `login.html` (aba Cadastro) | `POST /api/auth/register` | `AuthController.cadastrar` → `CadastrarUsuarioService` | `User.salvar()` |
+| 2 | **Fazer login** | `login.html` | `POST /api/auth/login` | `AuthController.autenticar` → `AutenticarUsuarioService` | `User.buscar_por_email()` |
+| 3 | **Buscar itens com filtros e ordenação** (texto, categoria, período) | `index.html` | `GET /api/items` | `ItemController.buscar` → `BuscarItensService` | `ItemRepository.buscar_itens` → `CALL sp_buscar_itens` |
+| 4 | **Listar categorias** (filtro e formulários) | `index.html`, `meus-alertas.html`, `admin.html` | `GET /api/items/categories` | `ItemController.listar_categorias` → `ListarCategoriasService` | `ItemRepository.listar_categorias` |
+| 5 | **Reivindicar item por questionário** (motor de validação, limite de 3 tentativas, código de retirada) | `reivindicar.html` | `GET /api/items/<code>/questionnaire` · `POST /api/claims` | `ItemController.questionario` → `ObterQuestionarioService` · `ClaimController.enviar` → `EnviarReivindicacaoService` | `ClaimRequest.salvar()`, `ClaimRepository`, `ItemRepository.reservar_se_disponivel` |
+| 6 | **Consultar histórico de pedidos** (filtro por situação + ordenação) | `meus-pedidos.html` | `GET /api/claims/mine` | `ClaimController.historico` → `ConsultarHistoricoService` | `ClaimRepository.historico_usuario` → `CALL sp_historico_usuario` |
+| 7 | **Cancelar reivindicação** (libera o item se já estava reservado) | `meus-pedidos.html` | `POST /api/claims/<id>/cancel` | `ClaimController.cancelar` → `CancelarReivindicacaoService` | `ClaimRequest.atualizar()`, `LostItem.atualizar()` |
+| 8 | **Registrar alerta de perda** (sugere itens compatíveis e notifica) | `meus-alertas.html` | `POST /api/lost-reports` | `LostReportController.registrar` → `RegistrarAlertaService` | `LostReport.salvar()`, `Notification.salvar()` |
+| 9 | **Listar meus alertas de perda** | `meus-alertas.html` | `GET /api/lost-reports/mine` | `LostReportController.listar_meus` → `ListarMeusAlertasService` | `LostReportRepository.listar_do_usuario` |
+| 10 | **Ver itens compatíveis com um alerta** | `meus-alertas.html` | `GET /api/lost-reports/<id>/matches` | `LostReportController.correspondencias` → `BuscarCorrespondenciasService` | `LostReport.buscar_por_id()`, `ItemRepository.listar_disponiveis` |
+| 11 | **Cancelar alerta de perda** | `meus-alertas.html` | `POST /api/lost-reports/<id>/cancel` | `LostReportController.cancelar` → `CancelarAlertaService` | `LostReport.atualizar()` |
+| 12 | **Consultar notificações** (contador no cabeçalho) | `notificacoes.html` + sino no menu | `GET /api/notifications` | `NotificationController.listar` → `ListarNotificacoesService` | `NotificationRepository` |
+| 13 | **Marcar notificação como lida** | `notificacoes.html` | `POST /api/notifications/<id>/read` | `NotificationController.marcar_lida` → `MarcarNotificacaoLidaService` | `Notification.atualizar()` |
+| 14 | **Marcar todas as notificações como lidas** | `notificacoes.html` | `POST /api/notifications/read-all` | `NotificationController.marcar_todas` → `MarcarTodasLidasService` | `NotificationRepository.marcar_todas_como_lidas` |
+
+### Painel administrativo (`admin.html`)
+
+| # | Funcionalidade | Aba | Rota da API | Controller → Service | Model / Repository |
+|---|---|---|---|---|---|
+| 15 | **Cadastrar item com gabarito sigiloso** (avisa alunos com alertas compatíveis) | Cadastrar item | `POST /api/admin/items` | `ItemController.cadastrar` → `CadastrarItemService` | `LostItem.salvar()` + `ItemAttribute` (composição) |
+| 16 | **Listar itens do acervo** (todas as situações) | Itens registrados | `GET /api/admin/items` | `ItemController.listar_admin` → `ListarItensAdminService` | `LostItem.listar_todos()`, `ItemRepository.contar_perguntas_por_item` |
+| 17 | **Editar item** (com visualização do gabarito) | Itens → Editar | `PUT /api/admin/items/<code>` · `GET /api/admin/items/<code>/attributes` | `ItemController.atualizar` → `AtualizarItemService` · `ConsultarGabaritoService` | `LostItem.atualizar()` |
+| 18 | **Arquivar item** (sai da vitrine, mantém histórico) | Itens → Arquivar | `POST /api/admin/items/<code>/archive` | `ItemController.arquivar` → `ArquivarItemService` | `LostItem.atualizar()` |
+| 19 | **Excluir item** (somente sem reivindicações) | Itens → Excluir | `DELETE /api/admin/items/<code>` | `ItemController.excluir` → `ExcluirItemService` | `LostItem.deletar()`, `ClaimRepository.existe_para_item` |
+| 20 | **Imprimir etiqueta do item** | Itens → Etiqueta | `GET /api/admin/items/<code>/label` | `ItemController.etiqueta` → `GerarEtiquetaService` | `LostItem.buscar_por_codigo()` |
+| 21 | **Auditar reivindicações** (JOIN item × aluno, filtros) | Reivindicações | `GET /api/admin/claims` | `ClaimController.listar_admin` → `ListarReivindicacoesService` | `ClaimRepository.listar_reivindicacoes` → `CALL sp_listar_reivindicacoes` |
+| 22 | **Aprovar ou recusar reivindicação em análise** | Reivindicações | `POST /api/admin/claims/<id>/review` | `ClaimController.avaliar` → `AvaliarReivindicacaoService` | `ClaimRequest.atualizar()`, `ItemRepository.reservar_se_disponivel` |
+| 23 | **Conferir código de retirada** | Retirada | `GET /api/admin/pickup/validate?code=` | `PickupController.validar` → `ValidarRetiradaService` | `LostItem.buscar_por_codigo_retirada()` |
+| 24 | **Registrar entrega presencial** | Retirada | `POST /api/admin/pickup/deliver` | `PickupController.entregar` → `RegistrarEntregaService` | `LostItem.atualizar()`, `Notification.salvar()` |
+| 25 | **Listar itens aptos à doação** (+N dias guardados) | Doações | `GET /api/admin/donations/eligible?days=` | `DonationController.listar_aptos` → `ListarItensDoacaoService` | `ItemRepository.itens_para_doacao` → `CALL sp_itens_para_doacao` |
+| 26 | **Doar itens em lote** | Doações | `POST /api/admin/donations/batch` | `DonationController.doar` → `DoarItensService` | `ItemRepository.doar_em_lote` |
+| 27 | **Consultar alertas de perda dos alunos** | Alertas de perda | `GET /api/admin/lost-reports?status=` | `LostReportController.listar_admin` → `ListarAlertasAdminService` | `LostReportRepository.buscar_alertas` → `CALL sp_buscar_alertas_perda` |
+| 28 | **Buscar usuários com indicadores** | Usuários | `GET /api/admin/users?search=` | `UserController.listar` → `ListarUsuariosService` | `UserRepository.buscar_usuarios` → `CALL sp_buscar_usuarios` |
+| 29 | **Alterar perfil do usuário** (aluno ↔ admin) | Usuários | `POST /api/admin/users/<id>/toggle-role` | `UserController.alterar_papel` → `AlterarPapelUsuarioService` | `User.atualizar()` |
+| 30 | **Indicadores do painel** | Topo do painel | `GET /api/admin/stats` | `ReportController.indicadores` → `ObterIndicadoresService` | `ItemRepository`, `ClaimRepository`, `UserRepository` (contagens) |
+| 31 | **Relatório por categoria** (itens × devolvidos × taxa de recuperação) | Relatórios | `GET /api/admin/reports/categories` | `ReportController.por_categoria` → `GerarRelatorioCategoriasService` | `ReportRepository.relatorio_categorias` → `CALL sp_relatorio_categorias` |
+| 32 | **Ranking de locais com mais achados** | Relatórios | `GET /api/admin/reports/locations` | `ReportController.ranking_locais` → `GerarRankingLocaisService` | `ReportRepository.ranking_locais` → `CALL sp_relatorio_locais` |
+| 33 | **Exportar relatórios em CSV** (acervo, reivindicações, categorias) | Relatórios | `GET /api/admin/reports/export?type=` | `ReportController.exportar_csv` → `ExportarRelatorioCsvService` | `LostItem.listar_todos()`, `ClaimRepository`, `ReportRepository` |
+
+**Regras automáticas que atravessam funcionalidades:**
+
+- Ao cadastrar um item, os alunos com alertas compatíveis recebem notificação (`NotificarCorrespondenciasService`).
+- Quando uma reivindicação é aprovada, os alertas compatíveis do aluno são marcados como resolvidos (`ResolverAlertasService`).
+- A reserva do item usa um `UPDATE ... WHERE status = 'available'` atômico. Duas aprovações simultâneas nunca reservam o mesmo item (`ReservarItemService`).
 
 ---
 
-## Arquitetura
+## Arquitetura e organização
 
 ```
 backend/
-    app.py                     # cria a aplicacao Flask e registra os blueprints
-    config.py                  # le o .env e monta a URI do banco
-    extensions.py              # instancia do SQLAlchemy (db)
-    errors.py                  # excecoes de regra de negocio
-    utils.py                   # validacoes reutilizaveis (data, e-mail, texto)
-    controllers/               # classes que recebem as requisicoes HTTP
-    services/                  # uma classe por caso de uso, com metodo execute()
-    models/                    # entidades do dominio (db.Model) + CRUD via ORM
-    repositories/              # consultas complexas encapsulando CALL de procedures
-    database/
-        schema.sql             # tabelas + stored procedures
-        seed.py                # dados de demonstracao
+├── app.py                  # fábrica Flask: registra controllers, erros e serve o frontend
+├── config.py               # lê o .env (python-dotenv) e monta a URI do MySQL
+├── extensions.py           # instância db = SQLAlchemy()
+├── database_setup.py       # cria tabelas/procedures automaticamente na subida
+├── seed.py                 # dados de demonstração (via Models e Services)
+├── controllers/            # 1 classe por recurso (herdam de BaseController)
+│   ├── base_controller.py
+│   ├── auth_controller.py, user_controller.py, item_controller.py,
+│   ├── claim_controller.py, lost_report_controller.py, notification_controller.py,
+│   └── pickup_controller.py, donation_controller.py, report_controller.py
+├── services/               # 1 classe = 1 caso de uso, método único executar()
+│   ├── auth/  users/  items/  claims/  lost_reports/
+│   └── notifications/  pickup/  donations/  reports/
+├── models/                 # entidades (herdam de BaseModel → db.Model)
+│   ├── base_model.py       # salvar, atualizar, deletar, listar_todos, buscar_por_id
+│   └── user.py, lost_item.py, item_attribute.py, claim_request.py,
+│       lost_report.py, notification.py
+├── repositories/           # SÓ consultas especiais: CALL de procedures, filtros, contagens
+│   ├── base_repository.py  # _chamar_procedure(): único ponto que executa CALL
+│   └── item_, claim_, report_, user_, lost_report_, notification_repository.py
+└── utils/                  # erros, validação, segurança (PBKDF2/JWT), motor de validação
 
 frontend/
-    index.html                 # itens encontrados + filtros por dia e categoria
-    pages/
-        login.html             # login do cliente
-        cadastro.html          # cadastro de cliente
-        produtos.html          # cadastrar / atualizar / excluir itens
-        reivindicar.html       # registrar reivindicacao
-        historico.html         # historico de reivindicacoes
-        relatorio.html         # relatorio de reivindicacoes
-    assets/
-        css/style.css
-        js/                    # api.js + um script por tela (consomem a API via fetch)
+├── inicio.html (tela inicial)  index.html  login.html  reivindicar.html  meus-pedidos.html
+├── meus-alertas.html  notificacoes.html  admin.html
+├── css/styles.css
+└── js/  api.js (único ponto de acesso à API) + um script por tela
+
+database/
+├── 01_schema.sql           # tabelas
+└── 02_procedures.sql       # 8 stored procedures
+
+docs/
+└── diagrama-de-classes.md / .png
 ```
 
-**Responsabilidades**
-
 | Camada | Responsabilidade |
-| --- | --- |
-| Controller | Classe por recurso. Recebe a requisicao, interpreta os dados e chama o `execute()` do Service. Nao contem regra de negocio nem SQL. |
-| Service | Uma classe por caso de uso, com um unico metodo `execute()`. Faz as validacoes e coordena Model/Repository. |
-| Model | Herda de `db.Model`. Representa a entidade e concentra o CRUD basico via ORM: `salvar()`, `atualizar()`, `deletar()`, `listar_todos()`, `buscar_por_id()`. |
-| Repository | Somente acessos especiais ao banco (filtros, JOIN, agregacoes, ranking), sempre chamando Stored Procedures. O `CALL` existe apenas aqui. |
+|---|---|
+| **Controller** | Classe por recurso. Registra as próprias rotas, lê o corpo/parâmetros da requisição HTTP, chama `Service().executar(...)` e devolve o JSON. Não tem regra de negócio nem SQL. |
+| **Service** | Uma classe por caso de uso, com um único método público `executar()`. Valida as entradas, aplica as regras de negócio, coordena Models e Repositories e controla a transação (`commit`). |
+| **Model** | Entidade do domínio. Herda de `BaseModel`, que herda de `db.Model` e fornece `salvar()`, `atualizar()`, `deletar()`, `listar_todos()` e `buscar_por_id()`. |
+| **Repository** | Só acessos especiais: filtros específicos, contagens, atualizações condicionais, relatórios e Stored Procedures. O `CALL` existe apenas em `BaseRepository._chamar_procedure`. |
 
----
+### Stored Procedures (chamadas apenas pela camada Repository)
 
-## Models
-
-| Model | Tabela | Descricao |
-| --- | --- | --- |
-| `Cliente` | `clientes` | Aluno que utiliza o sistema. |
-| `Produto` | `produtos` | Item encontrado no colegio. |
-| `Reivindicacao` | `reivindicacoes` | Solicitacao de devolucao feita por um cliente sobre um item. |
-
-## Repositories
-
-| Repository | Metodo | Procedure chamada |
-| --- | --- | --- |
-| `ProdutoRepository` | `listar_por_dia` | `sp_listar_produtos_por_dia` |
-| `ProdutoRepository` | `buscar_por_categoria` | `sp_buscar_produtos_por_categoria` |
-| `ReivindicacaoRepository` | `historico` | `sp_historico_reivindicacoes` |
-| `ReivindicacaoRepository` | `relatorio_por_status` | `sp_relatorio_reivindicacoes` |
-| `ReivindicacaoRepository` | `relatorio_por_categoria` | `sp_relatorio_reivindicacoes_por_categoria` |
-| `ReivindicacaoRepository` | `ranking_locais_perda` | `sp_ranking_locais_perda` |
-| `ReivindicacaoRepository` | `existe_pendente` | `sp_reivindicacao_duplicada` |
-
-## Procedures criadas
-
-| Procedure | O que faz |
-| --- | --- |
-| `sp_listar_produtos_por_dia(p_data)` | `WHERE` por data + `LEFT JOIN` com reivindicacoes, `GROUP BY` e `ORDER BY`. |
-| `sp_buscar_produtos_por_categoria(p_categoria, p_status)` | Filtro por categoria com status opcional, contando reivindicacoes. |
-| `sp_historico_reivindicacoes(p_cliente_id, p_status)` | `INNER JOIN` das 3 tabelas, `DATEDIFF` e `CASE` calculando a compatibilidade da reivindicacao. |
-| `sp_relatorio_reivindicacoes(p_data_inicio, p_data_fim)` | Agregacao por situacao no periodo (`COUNT`, `AVG`, `MIN`, `MAX`). |
-| `sp_relatorio_reivindicacoes_por_categoria(p_data_inicio, p_data_fim)` | Agregacao por categoria do item com `SUM(CASE ...)`. |
-| `sp_ranking_locais_perda(p_limite)` | Ranking dos locais com mais perdas (`GROUP BY` + `ORDER BY` + `LIMIT`). |
-| `sp_reivindicacao_duplicada(p_produto_id, p_cliente_id)` | Verifica se ja existe reivindicacao pendente do mesmo cliente para o item. |
-
----
-
-## Rotas da API
-
-| Metodo | Rota | Funcionalidade | Controller -> Service |
-| --- | --- | --- | --- |
-| POST | `/api/clientes` | 1. Cadastrar cliente | `ClienteController.cadastrar` -> `CadastrarClienteService` |
-| GET | `/api/clientes` | Listar clientes (apoio) | `ClienteController.listar` -> `ListarClientesService` |
-| POST | `/api/clientes/login` | Login do cliente | `ClienteController.autenticar` -> `AutenticarClienteService` |
-| GET | `/api/produtos` | 2. Listar produtos | `ProdutoController.listar` -> `ListarProdutosService` |
-| PUT | `/api/produtos/<id>` | 3. Atualizar produto | `ProdutoController.atualizar` -> `AtualizarProdutoService` |
-| DELETE | `/api/produtos/<id>` | 4. Excluir produto | `ProdutoController.excluir` -> `ExcluirProdutoService` |
-| POST | `/api/produtos` | 5. Cadastrar produto | `ProdutoController.cadastrar` -> `CadastrarProdutoService` |
-| GET | `/api/produtos/por-dia?data=` | 6. Listar por dia | `ProdutoController.listar_por_dia` -> `ListarProdutosPorDiaService` |
-| GET | `/api/produtos/categoria?categoria=&status=` | 7. Buscar por categoria | `ProdutoController.buscar_por_categoria` -> `BuscarProdutosPorCategoriaService` |
-| GET | `/api/produtos/<id>` | Detalhar item (apoio) | `ProdutoController.buscar` -> `BuscarProdutoService` |
-| GET | `/api/produtos/categorias` | Categorias aceitas (apoio) | `ProdutoController.listar_categorias` |
-| POST | `/api/reivindicacoes` | 8. Registrar reivindicacao | `ReivindicacaoController.registrar` -> `RegistrarReivindicacaoService` |
-| GET | `/api/reivindicacoes/historico?cliente_id=&status=` | 9. Consultar historico | `ReivindicacaoController.historico` -> `ConsultarHistoricoReivindicacaoService` |
-| GET | `/api/reivindicacoes/relatorio?data_inicio=&data_fim=` | 10. Gerar relatorio | `ReivindicacaoController.relatorio` -> `GerarRelatorioReivindicacaoService` |
+| Procedure | Repository | Uso |
+|---|---|---|
+| `sp_buscar_itens` | `ItemRepository.buscar_itens` | Vitrine com filtros combináveis e ordenação dinâmica |
+| `sp_itens_para_doacao` | `ItemRepository.itens_para_doacao` | Itens disponíveis há mais de N dias |
+| `sp_listar_reivindicacoes` | `ClaimRepository.listar_reivindicacoes` | Auditoria (JOIN reivindicação × item × usuário) |
+| `sp_historico_usuario` | `ClaimRepository.historico_usuario` | Histórico do aluno com filtro e ordenação |
+| `sp_relatorio_categorias` | `ReportRepository.relatorio_categorias` | Agregação por categoria |
+| `sp_relatorio_locais` | `ReportRepository.ranking_locais` | Ranking com `GROUP BY` + `LIMIT` |
+| `sp_buscar_alertas_perda` | `LostReportRepository.buscar_alertas` | Alertas com dados do aluno (JOIN) |
+| `sp_buscar_usuarios` | `UserRepository.buscar_usuarios` | Usuários com totais de pedidos e alertas |
 
 ---
 
 ## Como executar
 
-**Pre-requisitos:** Python 3.10+ e MySQL 8 (o WampServer/XAMPP ja atende).
+**Pré-requisitos:** Python 3.10+ e MySQL 8 (o MySQL do WampServer/XAMPP atende).
 
 ```bash
-# 1. Ambiente virtual e dependencias
+# 1. Ambiente virtual e dependências
 python -m venv .venv
-.venv\Scripts\activate          # Linux/Mac: source .venv/bin/activate
+.venv\Scripts\activate            # Linux/Mac: source .venv/bin/activate
 pip install -r requirements.txt
 
-# 2. Variaveis de ambiente
-copy .env.example .env          # Linux/Mac: cp .env.example .env
-# edite o .env com o usuario e a senha do seu MySQL
+# 2. Variáveis de ambiente
+copy .env.example .env            # Linux/Mac: cp .env.example .env
+# edite o .env com o usuário e a senha do seu MySQL
 
-# 3. Banco de dados (cria tabelas e procedures)
-mysql -u root -p < backend/database/schema.sql
-
-# 4. Dados de demonstracao (opcional)
-cd backend
-python database/seed.py
-
-# 5. Subir a aplicacao
-python app.py
+# 3. Subir a aplicação (cria o banco, as tabelas, as procedures e os dados de demonstração)
+python run.py
 ```
 
-Acesse **http://localhost:5000**.
+Acesse **http://127.0.0.1:8000**. A tela inicial pede login e mostra a conta de teste.
 
-Usuario de teste criado pelo seed: `ana@cotemig.br` / `123456`.
+| Perfil | E-mail | Senha |
+|---|---|---|
+| **Conta de teste** (exibida na tela inicial) | `teste@cotemig.com.br` | `teste123` |
+| Aluno | `aluno@cotemig.com.br` | `aluno123` |
+| Administrador | `admin@cotemig.com.br` | `admin123` |
 
-> As credenciais do banco ficam no arquivo `.env`, que esta no `.gitignore` e
-> nao e enviado para o repositorio. Use o `.env.example` como modelo.
+Opções: `python run.py --reload` (recarrega ao salvar) · `python run.py --reset` (**apaga** e recria o banco).
+
+### Variáveis de ambiente (`.env`)
+
+O arquivo `.env` **não vai para o repositório** (está no `.gitignore`). Use o `.env.example` como modelo.
+
+| Variável | Descrição |
+|---|---|
+| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | Conexão com o MySQL |
+| `SECRET_KEY` | Chave de assinatura dos tokens. Se ficar vazia, é gerada uma vez em `data/.secret_key` (também ignorada pelo git). |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Conta de administrador criada na primeira execução |
+| `TEST_ACCOUNT_NAME`, `TEST_ACCOUNT_EMAIL`, `TEST_ACCOUNT_PASSWORD` | Conta de teste (perfil aluno) exibida na tela inicial |
+| `FLASK_DEBUG` | `1` liga o modo de desenvolvimento |
 
 ---
 
-## Regras de negocio implementadas nos Services
+## Testes
 
-- E-mail e matricula do cliente nao podem se repetir; a senha e gravada com hash.
-- A categoria do item precisa estar na lista aceita e a data do encontro nao pode ser futura.
-- Um item com status `Reservado` nao pode ser excluido.
-- A data da perda deve ser anterior a data em que o item foi encontrado.
-- Um item ja `Entregue` nao aceita novas reivindicacoes.
-- O mesmo cliente nao pode abrir duas reivindicacoes pendentes para o mesmo item.
-- Ao registrar uma reivindicacao, o item passa automaticamente para `Reservado`.
+Com o servidor rodando (`python run.py`):
+
+```bash
+python -m unittest tests.test_matching tests.test_security   # unitários (motor de validação e segurança)
+python tests/test_new_features.py                            # ponta a ponta: alertas, notificações, retirada, doações, CSV, usuários...
+python tests/test_advanced_features.py                       # ponta a ponta: procedures de busca, auditoria e relatórios
+python tests/test_api_flow.py                                # fluxo completo (requer banco recém-criado)
+```
+#   A c h a d o s - e - p e r d i d o s - d e f i n i t i v o - c l i k a c h e i  
+ #   A c h a d o s - e - p e r d i d o s - d e f i n i t i v o - c l i k a c h e i  
+ 
